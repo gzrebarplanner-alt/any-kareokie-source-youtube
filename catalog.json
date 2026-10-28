@@ -1,0 +1,24 @@
+{
+  "name": "Any KAREOKIE 社群來源清單（gzrebarplanner-alt）",
+  "sources": [
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "version": "1.0.0",
+      "author": "Any KAREOKIE contributors",
+      "license": "MIT",
+      "summary": {
+        "zh-Hant": "用 yt-dlp 從 YouTube 搜尋，並下載影片的音訊與畫面",
+        "zh-Hans": "用 yt-dlp 从 YouTube 搜索，并下载视频的音频与画面",
+        "en": "Searches YouTube and downloads a video's audio and picture with yt-dlp",
+        "ja": "yt-dlp で YouTube を検索し、動画の音声と映像をダウンロードします",
+        "ko": "yt-dlp로 YouTube를 검색하고 영상의 오디오와 화면을 내려받습니다"
+      },
+      "homepage": "https://github.com/gzrebarplanner-alt/any-kareokie-source-youtube",
+      "terms": "https://github.com/gzrebarplanner-alt/any-kareokie-source-youtube/blob/main/TERMS.md",
+      "download": "https://github.com/gzrebarplanner-alt/any-kareokie-source-youtube/releases/download/v1.0.0/any-kareokie-source-youtube-1.0.0.zip",
+      "sha256": "195a97f6855e8f1219cc0eef9ed2488810eba52038e5b7c0068e7b0d02c690a3",
+      "size": 971408
+    }
+  ]
+}
