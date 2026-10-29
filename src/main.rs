@@ -143,11 +143,22 @@ fn classify(ctx: &Ctx, err: &str) -> Fail {
     let e = err.to_lowercase();
     let tail = err.lines().rev().find(|l| l.contains("ERROR")).unwrap_or(err.lines().last().unwrap_or("")).trim().to_string();
     eprintln!("{err}");
+    // HTTP 錯誤碼先看：「unable to download … HTTP Error 416」不是網路斷了
+    let http = e.split("http error ").nth(1).and_then(|s| s.get(..3)).and_then(|s| s.parse::<u16>().ok());
+    if let Some(status) = http {
+        return match status {
+            403 | 429 => Fail("network", ctx.t("YouTube 暫時不讓下載，等幾分鐘再試一次", "YouTube is temporarily refusing downloads. Try again in a few minutes.")),
+            416 => Fail("internal", ctx.t("下載的暫存檔對不上，請再匯入一次", "A leftover partial download got in the way. Please import again.")),
+            500..=599 => Fail("network", ctx.t("YouTube 暫時有問題，等一下再試", "YouTube is having trouble right now. Try again shortly.")),
+            404 | 410 => Fail("not_found", ctx.t("找不到這支影片（可能已刪除或設為私人）", "This video isn't available (it may have been removed or made private)")),
+            _ => Fail("internal", tail),
+        };
+    }
     if e.contains("is live") || e.contains("live event") {
         Fail("live", ctx.t("直播無法匯入", "Live streams can't be imported"))
     } else if e.contains("video unavailable") || e.contains("is unavailable") || e.contains("not available") || e.contains("removed") || e.contains("does not exist") {
         Fail("not_found", ctx.t("找不到這支影片（可能已刪除或設為私人）", "This video isn't available (it may have been removed or made private)"))
-    } else if e.contains("sign in") || e.contains("age") || e.contains("private") || e.contains("country") || e.contains("region") {
+    } else if e.contains("sign in") || e.contains("your age") || e.contains("age-restricted") || e.contains("age restricted") || e.contains("private") || e.contains("country") || e.contains("region") {
         Fail("unavailable", ctx.t("這支影片有觀看限制（登入、年齡或地區）", "This video is restricted (sign-in, age or region)"))
     } else if e.contains("unable to download") || e.contains("timed out") || e.contains("connection") || e.contains("getaddrinfo") {
         Fail("network", ctx.t("連不上 YouTube，請確認網路", "Couldn't reach YouTube. Check your connection."))
@@ -228,7 +239,8 @@ fn fetch(ctx: &Ctx, dir: &Path, stem: &str, format: &[&str], url: &str) -> R<Pat
     let template = dir.join(format!("{stem}.%(ext)s"));
     let template = template.to_string_lossy();
     let mut args: Vec<&str> = format.to_vec();
-    args.extend(["--no-playlist", "--no-warnings", "--no-part", "--newline", "--progress-template", "download:%(progress._percent_str)s", "-o", &template]);
+    // --no-continue：資料夾裡有上次留下的同名檔（--no-part 直接寫進正式檔名）也從頭下載，不續傳（續傳會遇到 416）
+    args.extend(["--no-playlist", "--no-warnings", "--no-part", "--no-continue", "--newline", "--progress-template", "download:%(progress._percent_str)s", "-o", &template]);
     if let Some(f) = &ctx.ffmpeg {
         args.extend(["--ffmpeg-location", f]);
     }
@@ -271,4 +283,28 @@ fn video(ctx: &Ctx, a: &Value) -> R<Value> {
     let (f, s) = (format!("bv*[height<={h}]/bv*"), format!("res:{h},+size,+br"));
     let p = fetch(ctx, &dir, "video", &["-f", &f, "-S", &s], &url_of(a["ref"].as_str().unwrap_or("")))?;
     Ok(json!({ "path": p }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn code(err: &str) -> &'static str {
+        classify(&Ctx { data: PathBuf::new(), ffmpeg: None, zh: true }, err).0
+    }
+
+    #[test]
+    fn 錯誤分類() {
+        // 續傳殘檔：不是網路問題（2026-10-29 被說成「連不上 YouTube」）
+        assert_eq!(code("ERROR: unable to download video data: HTTP Error 416: Requested range not satisfiable"), "internal");
+        // YouTube 暫時擋下載：等一下再試會好，算 network
+        assert_eq!(code("ERROR: unable to download video data: HTTP Error 403: Forbidden"), "network");
+        assert_eq!(code("ERROR: Unable to download webpage: HTTP Error 429: Too Many Requests"), "network");
+        // 「webpage」裡有 age，不能當成年齡限制
+        assert_eq!(code("ERROR: Unable to download webpage: <urlopen error [Errno 11001] getaddrinfo failed>"), "network");
+        assert_eq!(code("ERROR: [youtube] abc: Read timed out."), "network");
+        assert_eq!(code("ERROR: [youtube] abc: Sign in to confirm your age. This video may be inappropriate for some users."), "unavailable");
+        assert_eq!(code("ERROR: [youtube] abc: Video unavailable"), "not_found");
+        assert_eq!(code("ERROR: [youtube] abc: This live event will begin in 3 hours."), "live");
+    }
 }
