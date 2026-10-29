@@ -71,16 +71,26 @@ fn setup(ctx: &Ctx) -> R<()> {
     if !exe.is_file() {
         std::fs::create_dir_all(&ctx.data).map_err(|e| Fail("setup_failed", e.to_string()))?;
         download_ytdlp(ctx, &exe)?;
-        let _ = std::fs::write(&stamp, "");
+        touch(&stamp);
         return Ok(());
     }
     let old = std::fs::metadata(&stamp).and_then(|m| m.modified()).map(|t| SystemTime::now().duration_since(t).unwrap_or_default() > UPDATE_EVERY).unwrap_or(true);
     if old {
         out(json!({ "progress": 0.0, "message": ctx.t("更新 yt-dlp…", "Updating yt-dlp…") }));
         let _ = run(&exe, &["-U"]);
-        let _ = std::fs::write(&stamp, "");
+        touch(&stamp);
     }
     Ok(())
+}
+
+/// 記下「剛更新過」：寫進現在的時間。以前寫空字串，檔案本來就是空的時 Windows 不改修改時間，
+/// 超過 3 天之後每次開 App 第一次用都要等一次更新
+fn touch(stamp: &Path) {
+    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let _ = std::fs::write(stamp, now.to_string());
+    if let Ok(f) = std::fs::File::options().write(true).open(stamp) {
+        let _ = f.set_modified(SystemTime::now());
+    }
 }
 
 fn download_ytdlp(ctx: &Ctx, exe: &Path) -> R<()> {
@@ -306,5 +316,22 @@ mod tests {
         assert_eq!(code("ERROR: [youtube] abc: Sign in to confirm your age. This video may be inappropriate for some users."), "unavailable");
         assert_eq!(code("ERROR: [youtube] abc: Video unavailable"), "not_found");
         assert_eq!(code("ERROR: [youtube] abc: This live event will begin in 3 hours."), "live");
+    }
+}
+
+#[cfg(test)]
+mod stamp_tests {
+    use super::*;
+
+    #[test]
+    fn 記下更新時間會改到修改時間() {
+        let p = std::env::temp_dir().join(format!("ak-stamp-{}", std::process::id()));
+        std::fs::write(&p, "").unwrap();
+        let old = SystemTime::now() - Duration::from_secs(5 * 24 * 3600);
+        std::fs::File::options().write(true).open(&p).unwrap().set_modified(old).unwrap();
+        touch(&p);
+        let m = std::fs::metadata(&p).unwrap().modified().unwrap();
+        assert!(SystemTime::now().duration_since(m).unwrap() < Duration::from_secs(60));
+        let _ = std::fs::remove_file(&p);
     }
 }
