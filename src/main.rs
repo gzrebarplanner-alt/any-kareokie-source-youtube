@@ -8,7 +8,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::{Duration, SystemTime};
 
-const YTDLP_URL: &str = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
+/// yt-dlp 官方的單一執行檔：Windows 是 yt-dlp.exe，Mac 是 yt-dlp_macos（Universal，Apple 晶片也能跑）
+#[cfg(windows)]
+const YTDLP: &str = "yt-dlp.exe";
+#[cfg(not(windows))]
+const YTDLP: &str = "yt-dlp_macos";
 const UPDATE_EVERY: Duration = Duration::from_secs(3 * 24 * 3600);
 
 struct Ctx {
@@ -58,7 +62,7 @@ impl Ctx {
         if self.zh { zh.into() } else { en.into() }
     }
     fn ytdlp(&self) -> PathBuf {
-        self.data.join("yt-dlp.exe")
+        self.data.join(YTDLP)
     }
 }
 
@@ -95,7 +99,7 @@ fn touch(stamp: &Path) {
 
 fn download_ytdlp(ctx: &Ctx, exe: &Path) -> R<()> {
     let fail = |e: String| Fail("setup_failed", format!("{}{e}", ctx.t("下載 yt-dlp 失敗：", "Couldn't download yt-dlp: ")));
-    let resp = ureq::get(YTDLP_URL).call().map_err(|e| fail(e.to_string()))?;
+    let resp = ureq::get(&format!("https://github.com/yt-dlp/yt-dlp/releases/latest/download/{YTDLP}")).call().map_err(|e| fail(e.to_string()))?;
     let total: f64 = resp.headers().get("content-length").and_then(|v| v.to_str().ok()).and_then(|s| s.parse().ok()).unwrap_or(18e6);
     let mut body = resp.into_body();
     let mut reader = body.as_reader();
@@ -117,6 +121,12 @@ fn download_ytdlp(ctx: &Ctx, exe: &Path) -> R<()> {
         }
     }
     drop(file);
+    // Mac：下載下來沒有執行權限
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755)).map_err(|e| fail(e.to_string()))?;
+    }
     std::fs::rename(&tmp, exe).map_err(|e| fail(e.to_string()))
 }
 
