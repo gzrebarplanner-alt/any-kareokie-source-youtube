@@ -1,4 +1,4 @@
-//! Any KAREOKIE 的 YouTube 匯入來源（protocol 1，規格見 Any KAREOKIE 的 docs/sources.md）。
+//! MicNook 的 YouTube 匯入來源（protocol 1，規格見 MicNook 的 docs/sources.md）。
 //! 從標準輸入讀一行請求，把它翻成 yt-dlp 指令；進度與結果一行一個 JSON 寫到標準輸出。
 //! yt-dlp 第一次用時從 GitHub 下載到 App 給的 dataDir，之後每 3 天讓它自己更新一次。
 

@@ -1,11 +1,11 @@
 {
-  "name": "Any KAREOKIE 社群來源清單（gzrebarplanner-alt）",
+  "name": "MicNook 社群來源清單（gzrebarplanner-alt）",
   "sources": [
     {
       "id": "youtube",
       "name": "YouTube",
       "version": "1.0.3",
-      "author": "Any KAREOKIE contributors",
+      "author": "MicNook contributors",
       "license": "MIT",
       "summary": {
         "zh-Hant": "用 yt-dlp 從 YouTube 搜尋，並下載影片的音訊與畫面",

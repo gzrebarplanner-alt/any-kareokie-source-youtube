@@ -1,11 +1,11 @@
-# YouTube 匯入來源（Any KAREOKIE 擴充）
+# YouTube 匯入來源（MicNook 擴充）
 
-讓 Any KAREOKIE 可以搜尋 YouTube，並下載影片的音訊與畫面來匯入歌曲。
-這是**另外散布、使用者自己決定安裝**的擴充，不是 Any KAREOKIE 本身的一部分；使用前請先看 [TERMS.md](TERMS.md)。
+讓 MicNook 可以搜尋 YouTube，並下載影片的音訊與畫面來匯入歌曲。
+這是**另外散布、使用者自己決定安裝**的擴充，不是 MicNook 本身的一部分；使用前請先看 [TERMS.md](TERMS.md)。
 
-- 裝好後就在背景從 GitHub 的 [yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp) 下載 yt-dlp（Windows 是 `yt-dlp.exe`，Mac 是 `yt-dlp_macos`），放在 Any KAREOKIE 給這個擴充的資料夾；之後每 3 天讓它自己更新一次
-- 介面規格：Any KAREOKIE 的 `docs/sources.md`（protocol 1）
-- 這個擴充沒有 Any KAREOKIE 的官方簽章，安裝時 App 會標示「未簽章」
+- 裝好後就在背景從 GitHub 的 [yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp) 下載 yt-dlp（Windows 是 `yt-dlp.exe`，Mac 是 `yt-dlp_macos`），放在 MicNook 給這個擴充的資料夾；之後每 3 天讓它自己更新一次
+- 介面規格：MicNook 的 `docs/sources.md`（protocol 1）
+- 這個擴充沒有 MicNook 的官方簽章，安裝時 App 會標示「未簽章」
 
 ## 打包
 
@@ -13,7 +13,7 @@
 node pack.mjs
 ```
 
-產生 `dist/any-kareokie-source-youtube-<版本>.zip`，在 Any KAREOKIE 的「設定 → 匯入來源 → 安裝來源…」選這個檔。
+產生 `dist/any-kareokie-source-youtube-<版本>.zip`，在 MicNook 的「設定 → 匯入來源 → 安裝來源…」選這個檔。
 本機打包要先準備 Mac 版執行檔（見 pack.mjs 檔頭）。
 
 ## 發版
