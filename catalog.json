@@ -4,7 +4,7 @@
     {
       "id": "youtube",
       "name": "YouTube",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "author": "MicNook contributors",
       "license": "MIT",
       "summary": {
@@ -16,9 +16,9 @@
       },
       "homepage": "https://github.com/gzrebarplanner-alt/any-kareokie-source-youtube",
       "terms": "https://github.com/gzrebarplanner-alt/any-kareokie-source-youtube/blob/main/TERMS.md",
-      "download": "https://github.com/gzrebarplanner-alt/any-kareokie-source-youtube/releases/download/v1.0.3/any-kareokie-source-youtube-1.0.3.zip",
-      "sha256": "e10bf6cfef47bb621f507d2bc4cc869790cb798846d89a48c90cedf7b60f7030",
-      "size": 1919553
+      "download": "https://github.com/gzrebarplanner-alt/any-kareokie-source-youtube/releases/download/v1.0.4/any-kareokie-source-youtube-1.0.4.zip",
+      "sha256": "72fd341b72742d0583f3a1e1dc88d3f07fa3569544cb48dbe9b0e80521e96f15",
+      "size": 1919460
     }
   ]
 }
