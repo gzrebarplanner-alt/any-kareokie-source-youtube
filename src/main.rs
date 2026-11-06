@@ -268,15 +268,11 @@ fn fetch(ctx: &Ctx, dir: &Path, stem: &str, format: &[&str], url: &str) -> R<Pat
     let mut child = command(&ctx.ytdlp(), &args).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|e| Fail("setup_failed", e.to_string()))?;
     let mut stderr = child.stderr.take().unwrap();
     let errs = std::thread::spawn(move || {
-        let mut s = String::new();
-        let _ = stderr.read_to_string(&mut s);
-        s
+        let mut b = Vec::new();
+        let _ = stderr.read_to_end(&mut b);
+        String::from_utf8_lossy(&b).into_owned()
     });
-    for line in BufReader::new(child.stdout.take().unwrap()).lines().map_while(Result::ok) {
-        if let Ok(p) = line.trim().trim_end_matches('%').trim().parse::<f64>() {
-            out(json!({ "progress": (p / 100.0).clamp(0.0, 1.0) }));
-        }
-    }
+    progress_lines(child.stdout.take().unwrap(), |p| out(json!({ "progress": p })));
     let status = child.wait().map_err(|e| Fail("internal", e.to_string()))?;
     let err = errs.join().unwrap_or_default();
     if !status.success() {
@@ -287,6 +283,21 @@ fn fetch(ctx: &Ctx, dir: &Path, stem: &str, format: &[&str], url: &str) -> R<Pat
         .filter_map(|e| e.ok().map(|e| e.path()))
         .find(|p| p.is_file() && p.file_stem().map(|s| s == stem).unwrap_or(false))
         .ok_or_else(|| Fail("internal", ctx.t("yt-dlp 沒有產生檔案", "yt-dlp didn't produce a file")))
+}
+
+/// 讀 yt-dlp 的標準輸出直到結束，進度行（--progress-template 的「N.N%」）換成 0～1 交給 f。
+/// 一定要讀到底、不能因為某一行不是 UTF-8 就停：yt-dlp.exe 不理 PYTHONUTF8，「[download] Destination: 路徑」
+/// 用系統碼頁印（中文 Windows 是 cp950）。以前用 lines() 遇到就停止讀取、管線關掉，yt-dlp 下一次印進度就
+/// 「Unable to download …: [Errno 22] Invalid argument」，資料位置含中文的人匯入一律失敗、還被說成連不上 YouTube（0.1.36 的回報）
+fn progress_lines(r: impl Read, mut f: impl FnMut(f64)) {
+    let mut r = BufReader::new(r);
+    let mut buf = Vec::new();
+    while r.read_until(b'\n', &mut buf).map(|n| n > 0).unwrap_or(false) {
+        if let Ok(p) = String::from_utf8_lossy(&buf).trim().trim_end_matches('%').trim().parse::<f64>() {
+            f((p / 100.0).clamp(0.0, 1.0));
+        }
+        buf.clear();
+    }
 }
 
 /// 最高位元率的音訊（不重新編碼）
@@ -311,6 +322,16 @@ mod tests {
 
     fn code(err: &str) -> &'static str {
         classify(&Ctx { data: PathBuf::new(), ffmpeg: None, zh: true }, err).0
+    }
+
+    #[test]
+    fn 進度_遇到不是_utf8_的行也讀到底() {
+        // 「資料」的 cp950：b8 ea ae c6（yt-dlp.exe 在中文 Windows 印 Destination 的實際內容）
+        // 進度行是 --progress-template 印的「  N.N%」；最後一行可能沒有換行
+        let s = b"  0.0%\n[download] Destination: C:\\\xb8\xea\xae\xc6\\source.webm\n 55.5%\n100.0%";
+        let mut got = vec![];
+        progress_lines(&s[..], |p| got.push(p));
+        assert_eq!(got, vec![0.0, 0.555, 1.0]);
     }
 
     #[test]
