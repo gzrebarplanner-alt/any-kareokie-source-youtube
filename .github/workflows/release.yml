@@ -1,5 +1,7 @@
 # 發版：推 v<版本> 標籤（要跟 source.json 的 version 一樣）就在 GitHub 上編 Windows 與 Mac 兩個執行檔、打包 zip、發 Release。
 # Mac（Apple 晶片）的執行檔只能在 Mac 上編，所以分兩段：macos 先編好傳給 windows，windows 跑 pack.mjs 打包。
+# Mac 用 Intel 的機器交叉編譯成 Apple 晶片版（編出來一樣）：GitHub 的 Apple 晶片機器常常排不到，
+# 1.0.6 連三次排隊 15 分鐘被取消（Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times）
 # catalog.json 不在這裡改：Release 好了之後確認 zip 再手動更新（SHA-256 與大小印在這次執行的 Summary）。
 name: release
 
@@ -12,7 +14,7 @@ permissions:
 
 jobs:
   mac:
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - run: rustup target add aarch64-apple-darwin
