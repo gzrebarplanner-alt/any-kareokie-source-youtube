@@ -174,6 +174,11 @@ fn classify(ctx: &Ctx, err: &str) -> Fail {
             _ => Fail("internal", tail),
         };
     }
+    // 「Sign in to confirm you're not a bot」：YouTube 把這個網路當成機器人，跟影片無關（以前被說成影片有觀看限制，MicNook 0.1.37 的回報）。
+    // 撇號可能是彎的、或被解碼成亂碼，只比 not a bot
+    if e.contains("not a bot") {
+        return Fail("network", ctx.t("YouTube 暫時把你的網路當成機器人，不讓下載。請過一陣子再試，或換個網路（例如關掉 VPN、改用手機熱點）", "YouTube is treating your network as a bot right now. Try again later, or switch networks (for example, turn off your VPN)."));
+    }
     if e.contains("is live") || e.contains("live event") {
         Fail("live", ctx.t("直播無法匯入", "Live streams can't be imported"))
     } else if e.contains("video unavailable") || e.contains("is unavailable") || e.contains("not available") || e.contains("removed") || e.contains("does not exist") {
@@ -345,6 +350,9 @@ mod tests {
         assert_eq!(code("ERROR: Unable to download webpage: <urlopen error [Errno 11001] getaddrinfo failed>"), "network");
         assert_eq!(code("ERROR: [youtube] abc: Read timed out."), "network");
         assert_eq!(code("ERROR: [youtube] abc: Sign in to confirm your age. This video may be inappropriate for some users."), "unavailable");
+        // YouTube 把網路當成機器人：不是影片的觀看限制
+        assert_eq!(code("ERROR: [youtube] abc: Sign in to confirm you\u{2019}re not a bot. Use --cookies-from-browser or --cookies for the authentication."), "network");
+        assert_eq!(code("ERROR: [youtube] abc: Sign in to confirm you\u{fffd}\u{fffd}re not a bot."), "network");
         assert_eq!(code("ERROR: [youtube] abc: Video unavailable"), "not_found");
         assert_eq!(code("ERROR: [youtube] abc: This live event will begin in 3 hours."), "live");
     }
