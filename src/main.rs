@@ -8,10 +8,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::{Duration, SystemTime};
 
-/// yt-dlp 官方的單一執行檔：Windows 是 yt-dlp.exe，Mac 是 yt-dlp_macos（Universal，Apple 晶片也能跑）
+/// yt-dlp 官方的單一執行檔：Windows 是 yt-dlp.exe，Mac 是 yt-dlp_macos（Universal，Apple 晶片也能跑）。
+/// Android 沒有能跑的單一執行檔，用 Python 原始碼的 zipapp（yt-dlp），由 App 帶的 Python 執行（command）
 #[cfg(windows)]
 const YTDLP: &str = "yt-dlp.exe";
-#[cfg(not(windows))]
+#[cfg(target_os = "android")]
+const YTDLP: &str = "yt-dlp";
+#[cfg(not(any(windows, target_os = "android")))]
 const YTDLP: &str = "yt-dlp_macos";
 const UPDATE_EVERY: Duration = Duration::from_secs(3 * 24 * 3600);
 
@@ -135,14 +138,28 @@ fn no_window(cmd: &mut Command) {
     use std::os::windows::process::CommandExt;
     cmd.creation_flags(0x0800_0000);
 }
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "android")))]
 fn no_window(_: &mut Command) {}
 
+#[cfg(not(target_os = "android"))]
 fn command(exe: &Path, args: &[&str]) -> Command {
     let mut cmd = Command::new(exe);
     // yt-dlp 是 Python 程式：強制 UTF-8，否則中日文標題在 Windows 上會變亂碼
     cmd.args(args).env("PYTHONUTF8", "1").env("PYTHONIOENCODING", "utf-8");
     no_window(&mut cmd);
+    cmd
+}
+
+/// Android：App（MicNook 的 pyrt.rs）用環境變數給 Python 的位置（MICNOOK_PYTHON，其他 Python 要的環境變數也設好了）
+/// 與 yt-dlp 解 YouTube JS 驗證用的執行環境（MICNOOK_JS_RUNTIME，例如 quickjs:/路徑）
+#[cfg(target_os = "android")]
+fn command(exe: &Path, args: &[&str]) -> Command {
+    let mut cmd = Command::new(std::env::var_os("MICNOOK_PYTHON").unwrap_or_else(|| "python3".into()));
+    cmd.arg(exe);
+    if let Ok(js) = std::env::var("MICNOOK_JS_RUNTIME") {
+        cmd.args(["--no-js-runtimes", "--js-runtimes", &js]);
+    }
+    cmd.args(args).env("PYTHONUTF8", "1").env("PYTHONIOENCODING", "utf-8");
     cmd
 }
 
